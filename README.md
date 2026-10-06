@@ -10,7 +10,7 @@ Clone into ComfyUI's `custom_nodes` folder and restart ComfyUI:
 git clone https://github.com/danielpatillo/arquinovatos ComfyUI/custom_nodes/Arquinovatos_Prompt_Enhancer
 ```
 
-The Python backend uses only the standard library. Manager's **Install via Git URL** also accepts the repository URL. Public Manager search requires separate registration; see [publication status](docs/PUBLICATION.md).
+The Python backend uses only the standard library. Manager's **Install via Git URL** can install the repository when that feature is enabled in your Manager configuration. Public Manager search requires separate registration; see [publication status](docs/PUBLICATION.md).
 
 Automatic engine installation targets **Windows x64 with NVIDIA CUDA** and downloads pinned official llama.cpp binaries. Other platforms require a suitable local llama-server; this release requires a working CUDA backend. Integration is tested on a Windows RTX 5090 Laptop with 24 GB VRAM. No image/video generator is included.
 

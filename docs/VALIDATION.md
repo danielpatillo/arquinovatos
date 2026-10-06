@@ -12,6 +12,7 @@ Validation environment: Windows x64, RTX 5090 Laptop with approximately 24 GB VR
 - A real click on **Mejorar prompt** generated the example through Comfy's queue in 3.807 seconds total (138.03 tokens/s generation). The copy button produced exactly the displayed result. These numbers are one local measurement, not a performance guarantee.
 - 18/18 live ComfyUI API cases passed automatic checks and independent content review: 14 real generations, three cached Downloader runs and one expected missing-file error. The matrix covers all three models, manual-path model override, formats, optional attributes, selected time override and lenses in structured formats. Median measured generation speed was 136.53 tokens/s and total duration 3.461 seconds in that matrix.
 - Real ComfyUI text areas grew with 24 input rows and shrank after their removal. The final UI exposed exact system/user messages, expanded details without opening a canvas menu and copied the generated result correctly. Machine-specific full reports and earlier failed attempts are retained locally outside the public source archive.
+- The public GitHub commit ZIP was downloaded anonymously, without a credential or cookie. All 25 source blobs matched the reviewed package and all 39 backend tests passed from the downloaded folder.
 
 ## Scope and practical limits
 

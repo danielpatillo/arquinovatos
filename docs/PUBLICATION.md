@@ -6,7 +6,9 @@ The distribution repository is `https://github.com/danielpatillo/arquinovatos`.
 
 ## Current publication status
 
-The repository is public and was verified empty before publishing this reviewed release. The pack can be cloned or downloaded through GitHub. Public Manager search remains pending catalogue acceptance; the registration proposal is being submitted from the author's fork of ComfyUI-Manager.
+The repository is public and was verified empty before publishing this reviewed release. The pack can be cloned or downloaded through GitHub. The published functional source is commit [`1fea90f`](https://github.com/danielpatillo/arquinovatos/commit/1fea90f673644019990f1831c7a762d215c5c5cb), followed by publication-status documentation updates.
+
+An anonymous download of the commit ZIP matched all 25 reviewed source files, and 39 backend tests passed on the downloaded code. Public Manager search remains pending catalogue acceptance. The official registration proposal is [ComfyUI-Manager PR #3353](https://github.com/Comfy-Org/ComfyUI-Manager/pull/3353): open, not a draft, one catalogue entry and no changes to existing entries. GitHub's upstream workflow initially requires maintainer approval for this fork contribution. It is not a confirmed test failure or catalogue approval.
 
 The source ZIP can already be installed manually by placing its `Arquinovatos_Prompt_Enhancer` folder inside `ComfyUI/custom_nodes` and restarting ComfyUI.
 
