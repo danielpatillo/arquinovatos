@@ -1,6 +1,7 @@
 """Meaningful local-HTTP tests; do not load a model or launch llama.cpp."""
 
 import importlib.util
+import importlib
 import types
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -486,6 +487,55 @@ class RuntimeTests(unittest.TestCase):
         self.assertIn("no_(birds or dogs)", improved)
         for tag in improved.split(", ")[1:]:
             self.assertRegex(tag.lower(), r"^(no|sin|without|exclude|excluding)[ _-]")
+
+    def test_per_execution_advanced_settings_are_effective_and_never_write_config(self):
+        original = self.config_path.read_bytes()
+        settings = {"max_tokens": 128, "temperature": 0.15, "context_size": 8192}
+        _, metadata = self.manager.generate("A temple.", "Improve the lighting.", runtime.MODEL_NAMES[0],
+                                            self.config_path, generation_settings=settings)
+        self.assertEqual(metadata["generation_settings"], settings)
+        self.assertTrue(metadata["advanced_settings_enabled"])
+        self.assertEqual(FakeProcess.chat_requests[-1]["max_tokens"], 128)
+        self.assertEqual(FakeProcess.chat_requests[-1]["temperature"], 0.15)
+        self.assertEqual(FakeProcess.instances[-1].arguments[FakeProcess.instances[-1].arguments.index("-c") + 1], "8192")
+        self.assertEqual(self.config_path.read_bytes(), original)
+        self.assertTrue(metadata["server_released"])
+        _, default = self.generate()
+        self.assertEqual(default["generation_settings"], {"max_tokens": 512, "temperature": 0.4, "context_size": 4096})
+        self.assertFalse(default["advanced_settings_enabled"])
+
+    def test_invalid_advanced_settings_fail_before_load_and_release_a_previous_warm_model(self):
+        invalid = ({"max_tokens": 127}, {"max_tokens": 2049}, {"max_tokens": True},
+                   {"temperature": -0.1}, {"temperature": 1.1}, {"temperature": False},
+                   {"context_size": 2047}, {"context_size": 8193}, {"context_size": True},
+                   {"max_tokens": 2048, "context_size": 2048}, {"unknown": 1})
+        for settings in invalid:
+            with self.subTest(settings=settings), self.assertRaises(runtime.EnhancerError):
+                self.manager.generate("A temple.", "Improve.", runtime.MODEL_NAMES[0], self.config_path,
+                                      generation_settings=settings)
+        self.assertEqual(FakeProcess.instances, [])
+        self.data["release_after_generation"] = False
+        self.write_config()
+        self.generate()
+        with self.assertRaises(runtime.EnhancerError):
+            self.manager.generate("A temple.", "Improve.", runtime.MODEL_NAMES[0], self.config_path,
+                                  generation_settings={"max_tokens": 2048, "context_size": 2048})
+        self.assertTrue(FakeProcess.instances[-1].terminated)
+        self.assertIsNone(self.manager._process)
+
+    def test_node_advanced_toggle_off_ignores_values_and_on_applies_them(self):
+        nodes = importlib.import_module(PACKAGE_NAME + ".nodes")
+        with patch.object(nodes, "RUNTIME", self.manager), patch.object(nodes, "CONFIG_PATH", self.config_path):
+            node = nodes.ArquinovatosPromptEnhancer()
+            off = node.enhance("A temple.", "Improve.", runtime.MODEL_NAMES[0], ajustes_avanzados=False,
+                               tokens_maximos="ignored", creatividad=9.5, contexto=-2)
+            on = node.enhance("A temple.", "Improve.", runtime.MODEL_NAMES[0], ajustes_avanzados=True,
+                              tokens_maximos=128, creatividad=0.15, contexto=8192)
+        self.assertFalse(off["ui"]["metadata"][0]["advanced_settings_enabled"])
+        self.assertEqual(off["ui"]["metadata"][0]["max_tokens"], 512)
+        self.assertEqual(on["ui"]["metadata"][0]["generation_settings"],
+                         {"max_tokens": 128, "temperature": 0.15, "context_size": 8192})
+        self.assertTrue(on["ui"]["metadata"][0]["server_released"])
 
 
 if __name__ == "__main__":

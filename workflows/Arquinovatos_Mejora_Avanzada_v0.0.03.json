@@ -4,14 +4,14 @@
   "nodes": [
     {
       "id": 1,
-      "type": "Arquinovatos_Model_Downloader",
+      "type": "Arquinovatos_LLM_Model",
       "pos": [
         80,
         100
       ],
       "size": [
-        400,
-        220
+        440,
+        230
       ],
       "flags": {},
       "order": 0,
@@ -33,13 +33,14 @@
           "slot_index": 1
         }
       ],
-      "title": "Arquinovatos · Descargar modelo",
+      "title": "(Down)load LLM model by Arquinovatos",
       "properties": {
-        "Node name for S&R": "Arquinovatos_Model_Downloader"
+        "Node name for S&R": "Arquinovatos_LLM_Model"
       },
       "widgets_values": [
         "Qwen3.5-4B",
-        true
+        "",
+        "Automático"
       ],
       "color": "#253e45",
       "bgcolor": "#344f57"
@@ -48,7 +49,7 @@
       "id": 2,
       "type": "Arquinovatos_Prompt_Enhancer",
       "pos": [
-        530,
+        570,
         100
       ],
       "size": [
@@ -85,13 +86,13 @@
           "slot_index": 2
         }
       ],
-      "title": "Arquinovatos · Mejorar prompt · v0.0.02",
+      "title": "Arquinovatos · Mejorar prompt · v0.0.03",
       "properties": {
         "Node name for S&R": "Arquinovatos_Prompt_Enhancer"
       },
       "widgets_values": [
         "Una casa blanca con techo rojo junto a un lago azul y exactamente tres pinos. Sin personas, texto ni logotipos.",
-        "Mejora este prompt para generar una imagen: conserva el sujeto y la escena, las cantidades exactas y la relación entre cada sujeto y sus colores o atributos. Incluye por escrito todas las exclusiones originales (por ejemplo: sin personas, sin texto, sin logotipos), sin omitirlas ni añadir exclusiones nuevas. Describe composición, iluminación, materiales y estilo con precisión. Evita contradicciones y elementos nuevos que cambien la intención. Devuelve solo el prompt mejorado, en el mismo idioma, en un párrafo de 80 a 140 palabras.",
+        "Mejora este prompt para generar una imagen: conserva el sujeto y la escena, las cantidades exactas y la relación entre cada sujeto y sus colores o atributos. Trata las exclusiones visuales originales como un conjunto cerrado: no añadas, generalices ni amplíes ninguna restricción. Describe composición, iluminación, materiales y estilo con precisión. Evita contradicciones y elementos nuevos que cambien la intención. Redacta primero la descripción positiva y termina copiando literalmente las cláusulas de exclusión originales; no escribas otras condiciones de ausencia o prohibiciones. Si no hay exclusiones originales, no agregues ninguna. Los cambios de exclusiones pedidos expresamente por el usuario tienen prioridad. Devuelve solo el prompt mejorado, en el mismo idioma. Procura un párrafo de 80 a 140 palabras.",
         "Qwen3.5-4B",
         "",
         "",
@@ -99,7 +100,11 @@
         "",
         "",
         "",
-        ""
+        "",
+        true,
+        1024,
+        0.25,
+        4096
       ],
       "color": "#253e45",
       "bgcolor": "#344f57"
@@ -126,10 +131,10 @@
       ]
     },
     "info": {
-      "name": "Descargar si falta y mejorar",
+      "name": "Mejora con ajustes avanzados",
       "author": "ARQUINOVATOS",
-      "description": "Pulsa Mejorar prompt en el enhancer. Los atributos opcionales empiezan en blanco y no cambian el prompt. La salida prompt_utilizado muestra la instrucción enviada al LLM. El downloader reutiliza el modelo verificado si ya existe; si falta, descarga del catálogo. La primera descarga puede tardar. Selecciona el mismo modelo en el downloader; la conexión tiene prioridad en el enhancer.",
-      "version": "v0.0.02",
+      "description": "Elige el modelo y pulsa Mejorar prompt. Si falta el modelo del catálogo, se descargará automáticamente al ejecutar; el motor se instala solo si falta. Modelo del PC es opcional y no descarga sustitutos. Ajustes avanzados controla límite de salida, creatividad y contexto; cerrado por defecto en el ejemplo básico.",
+      "version": "v0.0.03",
       "created": "2026-10-06",
       "modified": "2026-10-06",
       "software": "ComfyUI"

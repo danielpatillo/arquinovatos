@@ -1,0 +1,33 @@
+{
+  "1": {
+    "class_type": "Arquinovatos_LLM_Model",
+    "inputs": {
+      "modelo_archivo": "Qwen3.5-4B",
+      "ruta_modelo": "",
+      "perfil": "Automático"
+    }
+  },
+  "2": {
+    "class_type": "Arquinovatos_Prompt_Enhancer",
+    "inputs": {
+      "prompt_positivo": "Una casa blanca con techo rojo junto a un lago azul y exactamente tres pinos. Sin personas, texto ni logotipos.",
+      "instrucciones": "Mejora este prompt para generar una imagen: conserva el sujeto y la escena, las cantidades exactas y la relación entre cada sujeto y sus colores o atributos. Trata las exclusiones visuales originales como un conjunto cerrado: no añadas, generalices ni amplíes ninguna restricción. Describe composición, iluminación, materiales y estilo con precisión. Evita contradicciones y elementos nuevos que cambien la intención. Redacta primero la descripción positiva y termina copiando literalmente las cláusulas de exclusión originales; no escribas otras condiciones de ausencia o prohibiciones. Si no hay exclusiones originales, no agregues ninguna. Los cambios de exclusiones pedidos expresamente por el usuario tienen prioridad. Devuelve solo el prompt mejorado, en el mismo idioma. Procura un párrafo de 80 a 140 palabras.",
+      "modelo": "Qwen3.5-4B",
+      "formato_prompt": "",
+      "estilo": "",
+      "lente_mm": "",
+      "hora_dia": "",
+      "composicion": "",
+      "iluminacion": "",
+      "paleta_color": "",
+      "modelo_input": [
+        "1",
+        0
+      ],
+      "ajustes_avanzados": true,
+      "tokens_maximos": 1024,
+      "creatividad": 0.25,
+      "contexto": 4096
+    }
+  }
+}

@@ -1,7 +1,7 @@
 [project]
 name = "arquinovatos-prompt-enhancer"
-version = "0.0.2"
-description = "Local GGUF prompt enhancement, model loading and verified downloads for ComfyUI."
+version = "0.0.3"
+description = "Local GGUF prompt enhancement with automatic model preparation and advanced generation settings for ComfyUI."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }

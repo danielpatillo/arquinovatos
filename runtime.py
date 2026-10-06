@@ -26,21 +26,26 @@ from urllib.request import ProxyHandler, Request, build_opener
 
 from .model_manager import CONFIG_PATH, MODEL_NAMES, ModelHandle, ModelManagerError, layout
 
-VERSION = "0.0.02"
+VERSION = "0.0.03"
 SYSTEM_PROMPT = (
     "You are an expert positive-prompt editor for image and video generation. "
     "Follow the user's editing instructions, including any changes they explicitly request. "
     "Preserve every original detail not explicitly changed: subjects, scene, identity, action, "
     "exact quantities and subject-attribute associations such as which object has which color. "
     "Preserve words such as 'exactly' when specifying counts. "
-    "CRITICAL: every explicit exclusion in the original prompt or editing instructions MUST "
-    "be written explicitly in the final prompt. Do not omit an exclusion just because the "
-    "forbidden subject is absent from your scene description. Copy exclusions verbatim when "
-    "the output language is unchanged; translate them faithfully when a language change is "
-    "requested. Include a concise sentence preserving ALL supplied exclusions. "
-    "Do not introduce exclusions absent from the original prompt "
-    "and editing instructions. Only change or remove an exclusion when the user explicitly "
-    "asks you to do so. Improve "
+    "CRITICAL: Treat explicitly supplied VISUAL exclusions as a closed set. Each absence "
+    "condition or prohibition in the final prompt must come directly from an original visual "
+    "exclusion or an explicitly requested editing change. Do not invent, summarize, generalize "
+    "or broaden restrictions, including when describing the atmosphere or aesthetic. "
+    "Editing instructions that explicitly add, change or remove a visual exclusion take "
+    "priority; never restore a restriction the user removed. Otherwise preserve every "
+    "supplied exclusion explicitly, even if the forbidden subject is absent from the scene "
+    "description. Write positive descriptive details first, then close with only the required "
+    "visual exclusion clauses, copied verbatim when the output language is unchanged or "
+    "faithfully translated when a language change is requested. If none were supplied or "
+    "requested, add no exclusion. For a structured format, preserve this closed set within "
+    "its designated visual field or exclusions category. Before returning, verify that every "
+    "negative statement has this direct user-supplied source and remove any invented one. Improve "
     "clarity, useful visual detail and coherence. Do not invent incompatible "
     "objects, people or events. Keep the original language unless the user's "
     "instructions specify another language. Return ONLY the improved positive "
@@ -111,18 +116,41 @@ def load_config(config_path: Path = CONFIG_PATH) -> RuntimeConfig:
     context_size = _integer(data, "context_size", 4096, 1024, 131072)
     max_tokens = _integer(data, "max_tokens", 768, 32, 4096)
     if max_tokens + 128 >= context_size:
-        raise EnhancerError("runtime.json: max_tokens debe dejar al menos 128 tokens libres para la entrada.")
+        raise EnhancerError("La configuración debe dejar al menos 128 tokens libres para la entrada. "
+                            "Usa Ajustes avanzados → Contexto / Tokens máximos o revisa max_tokens en tu configuración local.")
     return RuntimeConfig(
         llama_server=locations["llama_server"],
         models=locations["models"],
         context_size=context_size,
         max_tokens=max_tokens,
-        temperature=_number(data, "temperature", 0.4, 0, 2),
+        temperature=_number(data, "temperature", 0.15, 0, 2),
         server_timeout=_number(data, "server_timeout", 180, 5, 1800),
         request_timeout=_number(data, "request_timeout", 90, 5, 1800),
         release_after_generation=release,
         logs_dir=locations["logs_dir"],
     )
+
+
+def apply_generation_settings(config: RuntimeConfig, settings: dict | None) -> RuntimeConfig:
+    """Validate per-execution advanced settings without mutating any shared configuration."""
+    if settings is None:
+        return config
+    allowed = {"max_tokens", "temperature", "context_size"}
+    if not isinstance(settings, dict) or set(settings) - allowed:
+        raise EnhancerError("Ajustes avanzados desconocidos; usa tokens máximos, creatividad y contexto.")
+    try:
+        tokens = _integer(settings, "max_tokens", config.max_tokens, 128, 2048)
+        context = _integer(settings, "context_size", config.context_size, 2048, 8192)
+        temperature = _number(settings, "temperature", config.temperature, 0, 1)
+    except EnhancerError as exc:
+        detail = str(exc).replace("runtime.json: ", "").replace("max_tokens", "Tokens máximos")
+        detail = detail.replace("context_size", "Contexto").replace("temperature", "Creatividad")
+        raise EnhancerError("Ajustes avanzados → " + detail) from exc
+    if tokens + 128 >= context:
+        raise EnhancerError("Los tokens máximos deben dejar al menos 128 tokens libres en el contexto. "
+                            "Usa Ajustes avanzados → Tokens máximos / Contexto: reduce la respuesta o amplía el contexto; "
+                            "no se ha cargado el modelo.")
+    return replace(config, max_tokens=tokens, context_size=context, temperature=temperature)
 
 
 def validate_inputs(prompt: str, instructions: str, model_name: str, custom_model: bool = False) -> None:
@@ -399,10 +427,12 @@ class LlamaRuntime:
 
     def _verify_files_and_cuda(self, config: RuntimeConfig, model_name: str) -> None:
         if not config.llama_server.is_file():
-            raise EnhancerError(f"Falta llama-server: {config.llama_server}. Ejecuta Arquinovatos_Model_Downloader con instalar_motor activado o configura un motor local CUDA.")
+            raise EnhancerError(f"Falta llama-server: {config.llama_server}. Ejecuta '(Down)load LLM model by Arquinovatos' "
+                                "para preparar el motor automáticamente o configura un motor local CUDA.")
         model_path = config.models[model_name]
         if not model_path.is_file():
-            raise EnhancerError(f"Falta el modelo GGUF {model_name}: {model_path}. Usa Arquinovatos_Model_Downloader o conecta Arquinovatos_Model_Loader con un archivo local.")
+            raise EnhancerError(f"Falta el modelo GGUF {model_name}: {model_path}. Conecta '(Down)load LLM model by Arquinovatos' "
+                                "y elige el modelo del catálogo o un archivo local existente.")
         try:
             with model_path.open("rb") as handle:
                 if handle.read(4) != b"GGUF":
@@ -519,7 +549,7 @@ class LlamaRuntime:
 
     def generate(self, prompt: str, instructions: str, model_name: str,
                  config_path: Path = CONFIG_PATH, model_handle: ModelHandle | None = None,
-                 options: dict | None = None) -> tuple[str, dict]:
+                 options: dict | None = None, generation_settings: dict | None = None) -> tuple[str, dict]:
         with self._lock:
             began = time.perf_counter()
             succeeded = False
@@ -529,7 +559,7 @@ class LlamaRuntime:
                     raise EnhancerError("La entrada modelo_input debe proceder de Arquinovatos_Model_Loader o Arquinovatos_Model_Downloader.")
                 validate_inputs(prompt, instructions, model_name, custom_model=model_handle is not None)
                 selected_options = validate_options(options)
-                config = load_config(config_path)
+                config = apply_generation_settings(load_config(config_path), generation_settings)
                 if model_handle is not None:
                     model_name = model_handle.name
                     config = replace(config, models={model_name: model_handle.path}, profile=model_handle.profile)
@@ -548,7 +578,7 @@ class LlamaRuntime:
                     raise EnhancerError("llama.cpp no devolvió el recuento de tokens de entrada.")
                 if len(tokens) + config.max_tokens + 8 > config.context_size:
                     raise EnhancerError(f"La entrada ocupa {len(tokens)} tokens y necesita {config.max_tokens} para la respuesta. "
-                                        f"Supera el contexto de {config.context_size}; reduce el texto o aumenta context_size en runtime.json. "
+                                        f"Supera el contexto de {config.context_size}; reduce el texto o activa Ajustes avanzados → Contexto para ampliarlo. "
                                         "No se ha truncado tu prompt.")
                 generation_started = time.perf_counter()
                 payload = {
@@ -572,7 +602,8 @@ class LlamaRuntime:
                 if not isinstance(content, str) or not content.strip():
                     raise EnhancerError("El modelo devolvió texto vacío. Consulta el log del motor o cambia de modelo.")
                 if choice.get("finish_reason") == "length":
-                    raise EnhancerError("La respuesta alcanzó max_tokens y quedó incompleta. Pide un prompt más breve o aumenta max_tokens en runtime.json.")
+                    raise EnhancerError("La respuesta alcanzó el máximo de tokens y quedó incompleta. Pide un prompt más breve "
+                                        "o activa Ajustes avanzados → Tokens máximos para ampliar la respuesta.")
                 if response.get("truncated"):
                     raise EnhancerError("llama.cpp indicó truncamiento del contexto; no se aceptará una respuesta incompleta.")
                 improved = normalize_output(content, selected_format)
@@ -588,6 +619,9 @@ class LlamaRuntime:
                     speed = completion_tokens / generation_seconds if isinstance(completion_tokens, (int, float)) and generation_seconds else 0
                 metadata = {
                     "version": VERSION, "model": model_name, "model_path": str(config.models[model_name]),
+                    "advanced_settings_enabled": generation_settings is not None,
+                    "generation_settings": {"max_tokens": config.max_tokens, "temperature": config.temperature,
+                                            "context_size": config.context_size},
                     "model_profile": config.profile, "model_source": model_handle.source if model_handle else "selector de catálogo",
                     "effective_prompt": json.dumps(messages, ensure_ascii=False, indent=2),
                     "selected_options": selected_options,

@@ -2,7 +2,9 @@ import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
 const ENHANCER = "Arquinovatos_Prompt_Enhancer";
-const PACK_NODES = new Set([ENHANCER, "Arquinovatos_Model_Loader", "Arquinovatos_Model_Downloader"]);
+const MODEL_NODE = "Arquinovatos_LLM_Model";
+const PACK_NODES = new Set([ENHANCER, MODEL_NODE, "Arquinovatos_Model_Loader", "Arquinovatos_Model_Downloader"]);
+const DOWNLOAD_NOTICE = "Si no tienes el modelo seleccionado, se descargará automáticamente al ejecutar. El motor también se instala si falta.";
 const LABELS = {
     prompt_positivo: "Prompt positivo a mejorar",
     instrucciones: 'Prompt para que el LLM mejore el "prompt a mejorar"',
@@ -13,6 +15,13 @@ const LABELS = {
     lente_mm: "Lente en mm (opcional)", hora_dia: "Hora del día (opcional)",
     composicion: "Composición (opcional)", iluminacion: "Iluminación (opcional)",
     paleta_color: "Paleta de color (opcional)",
+    ajustes_avanzados: "Ajustes avanzados", tokens_maximos: "Tokens máximos de salida",
+    creatividad: "Creatividad", contexto: "Ventana de contexto",
+};
+const ADVANCED_TOOLTIPS = {
+    tokens_maximos: "Límite de tokens de la respuesta. Más tokens permiten textos largos, pero aumentan el tiempo de generación.",
+    creatividad: "Variación de la respuesta. Los valores bajos son más consistentes; los altos permiten más cambios.",
+    contexto: "Capacidad total para instrucciones, prompt y respuesta. Un contexto mayor consume más memoria.",
 };
 
 /** Keep only the target and its input dependencies; never follow output links. */
@@ -162,6 +171,102 @@ function labelMultilineInput(node, widget) {
     sizing.observe(wrapper);
 }
 
+function nativeWidgetVisibility(widget, visible) {
+    if (!widget._arquinovatosVisibility) {
+        widget._arquinovatosVisibility = {
+            type: widget.type, hidden: widget.hidden,
+            ownCompute: Object.hasOwn(widget, "computeSize"), computeSize: widget.computeSize,
+            ownHeight: Object.hasOwn(widget, "computedHeight"), computedHeight: widget.computedHeight,
+        };
+    }
+    const original = widget._arquinovatosVisibility;
+    if (visible) {
+        widget.type = original.type;
+        widget.hidden = original.hidden;
+        if (original.ownCompute) widget.computeSize = original.computeSize;
+        else delete widget.computeSize;
+        if (original.ownHeight) widget.computedHeight = original.computedHeight;
+        else delete widget.computedHeight;
+    } else {
+        widget.type = "hidden";
+        widget.hidden = true;
+        // Legacy canvas adds four pixels after computeSize; cancel that gap.
+        // Current Comfy additionally skips hidden widgets entirely.
+        widget.computeSize = () => [0, -4];
+        widget.computedHeight = 0;
+    }
+    // Values, callbacks, options.serialize and widget-store identity stay intact.
+}
+
+function setupVisibility(node, enhancer, combinedModel) {
+    const sizing = createSizing(node);
+    const groups = node._arquinovatosVisibilityGroups ||= [];
+    if (enhancer) {
+        const toggle = node.widgets?.find((widget) => widget.name === "ajustes_avanzados");
+        const advanced = (node.widgets || []).filter((widget) => Object.hasOwn(ADVANCED_TOOLTIPS, widget.name));
+        if (toggle && advanced.length) {
+            for (const widget of advanced) {
+                widget.tooltip = ADVANCED_TOOLTIPS[widget.name];
+                widget.options ||= {};
+                widget.options.tooltip = ADVANCED_TOOLTIPS[widget.name];
+            }
+            let previousVisible;
+            const sync = () => {
+                const visible = toggle.value === true;
+                if (visible === previousVisible) return;
+                previousVisible = visible;
+                advanced.forEach((widget) => nativeWidgetVisibility(widget, visible));
+                sizing.schedule(); node.setDirtyCanvas(true, true);
+            };
+            const callback = toggle.callback;
+            toggle.callback = function () { const result = callback?.apply(this, arguments); sync(); return result; };
+            toggle.tooltip = "Activa opciones de longitud, variación y contexto. Al desactivar se usan los valores predeterminados.";
+            groups.push({ sync }); sync();
+        }
+    }
+    if (combinedModel) {
+        const manual = (node.widgets || []).filter((widget) => widget.name === "ruta_modelo" || widget.name === "perfil");
+        if (manual.length) {
+            const details = document.createElement("details");
+            Object.assign(details.style, { width: "100%", height: "auto", boxSizing: "border-box", padding: "2px", font: "11px/1.4 sans-serif", color: "var(--input-text, #eee)" });
+            const summary = document.createElement("summary");
+            summary.textContent = "Modelo del PC (opcional)";
+            summary.style.cursor = "pointer";
+            for (const name of ["pointerdown", "pointerup", "mousedown", "mouseup", "click", "contextmenu"]) summary.addEventListener(name, (event) => event.stopPropagation());
+            const explanation = document.createElement("div");
+            explanation.textContent = "Una ruta manual tiene prioridad. Si el archivo no existe o no es un GGUF válido, se muestra un error; no se descarga otro modelo.";
+            Object.assign(explanation.style, { paddingTop: "5px", overflowWrap: "anywhere" });
+            details.append(summary, explanation);
+            const section = node.addDOMWidget("arquinovatos_modelo_manual", "customtext", details, { serialize: false, hideOnZoom: false, getValue: () => "", setValue: () => {} });
+            section.serialize = false; section.serializeValue = () => undefined;
+            // Insert the nonserialized heading before the original native fields;
+            // the serialized native field order remains exactly the backend order.
+            const index = node.widgets.indexOf(manual[0]);
+            node.widgets.splice(node.widgets.indexOf(section), 1);
+            node.widgets.splice(index, 0, section);
+            sizing.fix(section, 20);
+            sizing.entries.push({ widget: section, measure() { sizing.fix(section, Math.ceil(details.scrollHeight)); } });
+            sizing.observe(details);
+            let previousOpen;
+            const sync = () => {
+                if (details.open === previousOpen) return;
+                previousOpen = details.open;
+                manual.forEach((widget) => nativeWidgetVisibility(widget, details.open));
+                sizing.schedule(); node.setDirtyCanvas(true, true);
+            };
+            details.addEventListener("toggle", sync);
+            groups.push({ sync }); sync();
+            node._arquinovatosManual = { details, fields: manual, section };
+        }
+    }
+    const configure = node.onConfigure;
+    node.onConfigure = function () {
+        const result = configure?.apply(this, arguments);
+        groups.forEach((group) => group.sync());
+        sizing.schedule(); return result;
+    };
+}
+
 async function copyText(element, button, initial) {
     if (!element.value) return;
     try { await navigator.clipboard.writeText(element.value); button.textContent = "Copiado"; setTimeout(() => { button.textContent = initial; }, 1600); }
@@ -177,14 +282,23 @@ function addOutputDisplay(node, enhancer) {
     // constrained flex container would otherwise shrink the result and feed its
     // undersized height back into the next node-layout pass.
     Object.assign(container.style, { display: "flex", flexDirection: "column", gap: "6px", padding: "4px 2px", width: "100%", height: "auto", boxSizing: "border-box", color: "var(--input-text, #eee)" });
-    const title = document.createElement("div"); title.textContent = enhancer ? "Prompt mejorado · v0.0.02" : "Modelo LLM · v0.0.02";
+    const combinedModel = node.comfyClass === MODEL_NODE;
+    const title = document.createElement("div"); title.textContent = enhancer ? "Prompt mejorado · v0.0.03" : "Modelo LLM · v0.0.03";
     title.style.font = "600 12px/1.35 sans-serif";
     const buttons = document.createElement("div"); Object.assign(buttons.style, { display: "flex", gap: "6px", flexWrap: "wrap" });
-    const runLabel = enhancer ? "Mejorar prompt" : node.comfyClass === "Arquinovatos_Model_Downloader" ? "Descargar modelo" : "Cargar modelo";
+    const runLabel = enhancer ? "Mejorar prompt" : combinedModel ? "Cargar / descargar modelo" : node.comfyClass === "Arquinovatos_Model_Downloader" ? "Descargar modelo" : "Cargar modelo";
     const run = makeButton(runLabel, "Ejecuta este nodo y sus entradas. Los nodos posteriores no se ejecutan.");
     const status = document.createElement("div"); status.setAttribute("role", "status"); status.setAttribute("aria-live", "polite"); status.hidden = true;
     Object.assign(status.style, { font: "11px/1.35 sans-serif", overflowWrap: "anywhere" });
-    buttons.append(run); container.append(title, buttons, status);
+    buttons.append(run); container.append(title);
+    if (combinedModel) {
+        const notice = document.createElement("div");
+        notice.textContent = DOWNLOAD_NOTICE;
+        notice.setAttribute("aria-label", "Descarga automática de modelo y motor");
+        Object.assign(notice.style, { font: "11px/1.4 sans-serif", overflowWrap: "anywhere" });
+        container.append(notice);
+    }
+    container.append(buttons, status);
     const output = makeTextarea("Prompt mejorado, solo lectura"); output.placeholder = "El prompt mejorado aparecerá aquí.";
     const copy = makeButton("Copiar prompt mejorado");
     if (enhancer) { buttons.append(copy); container.append(output); }
@@ -278,15 +392,17 @@ function addOutputDisplay(node, enhancer) {
 }
 
 app.registerExtension({
-    name: "Arquinovatos.PromptEnhancer.v0.0.02",
+    name: "Arquinovatos.PromptEnhancer.v0.0.03",
     async beforeRegisterNodeDef(nodeType, nodeData) {
         if (!PACK_NODES.has(nodeData.name)) return;
         const enhancer = nodeData.name === ENHANCER;
+        const combinedModel = nodeData.name === MODEL_NODE;
         const created = nodeType.prototype.onNodeCreated;
         nodeType.prototype.onNodeCreated = function () {
             const result = created?.apply(this, arguments);
             for (const widget of this.widgets || []) if (LABELS[widget.name]) { widget.label = LABELS[widget.name]; labelMultilineInput(this, widget); }
             for (const input of this.inputs || []) if (LABELS[input.name]) input.label = LABELS[input.name];
+            setupVisibility(this, enhancer, combinedModel);
             addOutputDisplay(this, enhancer); return result;
         };
         const executed = nodeType.prototype.onExecuted;
@@ -294,6 +410,7 @@ app.registerExtension({
         const draw = nodeType.prototype.onDrawBackground;
         nodeType.prototype.onDrawBackground = function () {
             const result = draw?.apply(this, arguments); const sizing = this._arquinovatosSizing;
+            this._arquinovatosVisibilityGroups?.forEach((group) => group.sync());
             if (sizing && !sizing.updating && Math.abs((this.size?.[1] || 0) - sizing.expectedHeight) > 1) sizing.schedule();
             return result;
         };

@@ -125,7 +125,8 @@ def layout(config_path: Path = CONFIG_PATH) -> dict:
 def validate_gguf(path: Path) -> Path:
     path = Path(path).resolve()
     if not path.is_file():
-        raise ModelManagerError(f"Falta el modelo GGUF: {path}. Usa Arquinovatos_Model_Downloader o elige una ruta local existente.")
+        raise ModelManagerError(f"Falta el modelo GGUF: {path}. Elige un archivo local existente o un modelo del catálogo en "
+                                "'(Down)load LLM model by Arquinovatos'. Una ruta manual inexistente no se sustituye por una descarga.")
     if path.suffix.lower() != ".gguf":
         raise ModelManagerError(f"El modelo debe ser un archivo .gguf: {path}")
     try:
@@ -335,3 +336,28 @@ def download_model(name: str, install_runtime: bool = True, config_path: Path = 
         handle = ModelHandle(name, validate_gguf(model), "Automático", "catálogo SHA256 verificado")
         return handle, {"downloaded": downloaded, "engine_installed": engine_installed, "sha256": artifact["sha256"],
                         "model_path": str(handle.path), "llama_server": str(layout(config_path)["llama_server"])}
+
+
+def prepare_model(model_file: str, manual_path: str = "", profile: str = "Automático",
+                  config_path: Path = CONFIG_PATH, progress=None) -> tuple[ModelHandle, dict]:
+    """Prepare a lazy handle; auto-download only an absent catalogue model and missing engine."""
+    if not isinstance(model_file, str) or not isinstance(manual_path, str):
+        raise ModelManagerError("Selecciona un modelo o escribe una ruta GGUF local como texto.")
+    if profile not in PROFILES:
+        raise ModelManagerError("Perfil desconocido. Selecciona un perfil del nodo.")
+    with _DOWNLOAD_LOCK:
+        locations = layout(config_path)
+        selected_catalogue = not manual_path.strip() and model_file in MODEL_NAMES
+        if selected_catalogue and not locations["models"][model_file].exists():
+            handle, metadata = download_model(model_file, True, config_path, progress)
+            if handle.profile != profile:
+                handle = ModelHandle(handle.name, handle.path, profile, handle.source)
+            metadata["source_mode"] = "catálogo"
+            return handle, metadata
+        # A manual/local path is always validated before any engine installation, with no fallback.
+        # Existing catalogue files also fail explicitly if corrupt; they are never silently replaced.
+        handle = load_model(model_file, manual_path, profile, config_path)
+        engine, installed = install_engine(config_path, progress)
+        return handle, {"downloaded": False, "engine_installed": installed,
+                        "model_path": str(handle.path), "llama_server": str(engine),
+                        "source_mode": "catálogo" if selected_catalogue else "GGUF local/manual"}

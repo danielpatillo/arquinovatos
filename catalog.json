@@ -1,5 +1,5 @@
 {
-  "version": "0.0.02",
+  "version": "0.0.03",
   "models": {
     "Qwen3.5-4B": {
       "filename": "Qwen3.5-4B-Q4_K_M.gguf",

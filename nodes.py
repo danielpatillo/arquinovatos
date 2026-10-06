@@ -5,19 +5,23 @@ import json
 from pathlib import Path
 import uuid
 
-from .runtime import CONFIG_PATH, MODEL_NAMES, RUNTIME, VERSION
+from .runtime import CONFIG_PATH, MODEL_NAMES, RUNTIME, VERSION, EnhancerError
 from .runtime import FORMAT_NAMES, OPTION_NAMES
-from .model_manager import PROFILES, available_models, load_model, download_model
+from .model_manager import PROFILES, available_models, load_model, download_model, prepare_model
 
 
 DEFAULT_INSTRUCTIONS = (
     "Mejora este prompt para generar una imagen: conserva el sujeto y la escena, "
     "las cantidades exactas y la relación entre cada sujeto y sus colores o atributos. "
-    "Incluye por escrito todas las exclusiones originales (por ejemplo: sin personas, "
-    "sin texto, sin logotipos), sin omitirlas ni añadir exclusiones nuevas. "
+    "Trata las exclusiones visuales originales como un conjunto cerrado: no añadas, "
+    "generalices ni amplíes ninguna restricción. "
     "Describe composición, iluminación, materiales y estilo con precisión. "
     "Evita contradicciones y elementos nuevos que cambien la intención. "
-    "Devuelve solo el prompt mejorado, en el mismo idioma, en un párrafo de 80 a 140 palabras."
+    "Redacta primero la descripción positiva y termina copiando literalmente las cláusulas "
+    "de exclusión originales; no escribas otras condiciones de ausencia o prohibiciones. "
+    "Si no hay exclusiones originales, no agregues ninguna. "
+    "Los cambios de exclusiones pedidos expresamente por el usuario tienen prioridad. "
+    "Devuelve solo el prompt mejorado, en el mismo idioma. Procura un párrafo de 80 a 140 palabras."
 )
 
 
@@ -67,6 +71,10 @@ class ArquinovatosPromptEnhancer:
             "composicion": ("STRING", {"default": "", "tooltip": "Opcional: plano general, primer plano, simetría…"}),
             "iluminacion": ("STRING", {"default": "", "tooltip": "Opcional: luz suave, contraluz, luz de estudio…"}),
             "paleta_color": ("STRING", {"default": "", "tooltip": "Opcional: tonos cálidos, pastel, monocromático…"}),
+            "ajustes_avanzados": ("BOOLEAN", {"default": False, "tooltip": "Activa los ajustes de esta ejecución. Desactivado ignora sus tres valores y usa la configuración normal."}),
+            "tokens_maximos": ("INT", {"default": 768, "min": 128, "max": 2048, "tooltip": "Máximo de tokens de la respuesta; deja espacio libre para la entrada."}),
+            "creatividad": ("FLOAT", {"default": 0.15, "min": 0.0, "max": 1.0, "step": 0.05, "tooltip": "Temperatura: baja para resultados más consistentes, alta para más variación."}),
+            "contexto": ("INT", {"default": 4096, "min": 2048, "max": 8192, "step": 1024, "tooltip": "Contexto total de entrada y salida. Un contexto mayor puede usar más VRAM."}),
         }}
 
     @classmethod
@@ -76,11 +84,17 @@ class ArquinovatosPromptEnhancer:
 
     def enhance(self, prompt_positivo: str, instrucciones: str, modelo: str,
                 modelo_input=None, formato_prompt: str = "", estilo: str = "", lente_mm: str = "",
-                hora_dia: str = "", composicion: str = "", iluminacion: str = "", paleta_color: str = ""):
+                hora_dia: str = "", composicion: str = "", iluminacion: str = "", paleta_color: str = "",
+                ajustes_avanzados: bool = False, tokens_maximos: int = 768, creatividad: float = 0.15, contexto: int = 4096):
+        if type(ajustes_avanzados) is not bool:
+            RUNTIME.stop()
+            raise EnhancerError("ajustes_avanzados debe ser verdadero o falso.")
+        generation_settings = {"max_tokens": tokens_maximos, "temperature": creatividad,
+                               "context_size": contexto} if ajustes_avanzados else None
         options = {"formato_prompt": formato_prompt, "estilo": estilo, "lente_mm": lente_mm,
                    "hora_dia": hora_dia, "composicion": composicion, "iluminacion": iluminacion, "paleta_color": paleta_color}
         improved, metadata = RUNTIME.generate(prompt_positivo, instrucciones, modelo, CONFIG_PATH,
-                                              model_handle=modelo_input, options=options)
+                                              model_handle=modelo_input, options=options, generation_settings=generation_settings)
         evidence, warning = _save_evidence(prompt_positivo, instrucciones, improved, metadata)
         if evidence:
             metadata["evidence_path"] = evidence
@@ -109,13 +123,57 @@ class ArquinovatosPromptEnhancer:
                 "result": (improved, information, used)}
 
 
+class ArquinovatosLLMModel:
+    CATEGORY = "Arquinovatos/LLM"
+    FUNCTION = "prepare"
+    RETURN_TYPES = ("ARQUINOVATOS_LLM_MODEL", "STRING")
+    RETURN_NAMES = ("modelo_llm", "informacion")
+    OUTPUT_NODE = True
+    DESCRIPTION = ("Si no tienes el modelo seleccionado, se descargará automáticamente al ejecutar. "
+                   "Reutiliza el GGUF existente o descarga el GGUF del catálogo y el motor llama.cpp Windows CUDA si falta. "
+                   "Una ruta manual inexistente produce un error; nunca se sustituye por otro modelo. "
+                   "No carga VRAM hasta conectar y ejecutar el Enhancer. v" + VERSION)
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {
+            "modelo_archivo": (available_models(), {"default": MODEL_NAMES[0],
+                "tooltip": "Si no tienes el modelo del catálogo seleccionado, se descargará automáticamente al ejecutar; si ya existe, se reutiliza."}),
+        }, "optional": {
+            "ruta_modelo": ("STRING", {"default": "", "tooltip": "Opcional: ruta absoluta de un GGUF existente en el PC; tiene prioridad y nunca se reemplaza por una descarga."}),
+            "perfil": (list(PROFILES), {"default": "Automático", "tooltip": "El GGUF local debe ser un LLM de chat de texto compatible con llama.cpp CUDA."}),
+        }}
+
+    @classmethod
+    def IS_CHANGED(cls, **kwargs):
+        return float("nan")
+
+    def prepare(self, modelo_archivo: str, ruta_modelo: str = "", perfil: str = "Automático"):
+        progress = None
+        try:
+            from comfy.utils import ProgressBar
+            bar = ProgressBar(1000)
+            progress = lambda current, total: bar.update_absolute(min(1000, int(current * 1000 / total)), 1000)
+        except ImportError:
+            pass
+        handle, metadata = prepare_model(modelo_archivo, ruta_modelo, perfil, progress=progress)
+        metadata.update({"version": VERSION, "model": handle.name, "vram_loaded": False})
+        info = (f"Modelo: {handle.name}\n"
+                f"GGUF {'descargado' if metadata['downloaded'] else 'reutilizado'}: {handle.path}\n"
+                f"Motor llama.cpp {'instalado' if metadata['engine_installed'] else 'reutilizado'}: {metadata['llama_server']}\n"
+                "Si no tienes el modelo seleccionado, se descargará automáticamente al ejecutar.\n"
+                "Descarga el GGUF del catálogo y el motor Windows CUDA solo cuando faltan.\n"
+                "Listo para conectar; VRAM sin cargar.")
+        return {"ui": {"info": [info], "metadata": [metadata]}, "result": (handle, info)}
+
+
 class ArquinovatosModelLoader:
     CATEGORY = "Arquinovatos/LLM"
     FUNCTION = "load"
     RETURN_TYPES = ("ARQUINOVATOS_LLM_MODEL", "STRING")
     RETURN_NAMES = ("modelo_llm", "informacion")
     OUTPUT_NODE = True
-    DESCRIPTION = "Selecciona un GGUF instalado o una ruta manual del PC; no descarga ni ocupa VRAM. v" + VERSION
+    DESCRIPTION = "Legacy: para workflows anteriores. Selecciona un GGUF instalado o una ruta manual del PC; no descarga ni ocupa VRAM. Usa el nodo (Down)load LLM model by Arquinovatos en workflows nuevos. v" + VERSION
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -141,7 +199,7 @@ class ArquinovatosModelDownloader:
     RETURN_TYPES = ("ARQUINOVATOS_LLM_MODEL", "STRING")
     RETURN_NAMES = ("modelo_llm", "informacion")
     OUTPUT_NODE = True
-    DESCRIPTION = "Al ejecutarlo descarga el GGUF ausente y verifica SHA256; opcionalmente instala llama.cpp Windows CUDA. v" + VERSION
+    DESCRIPTION = "Legacy: para workflows anteriores. Al ejecutarlo descarga el GGUF ausente y verifica SHA256; opcionalmente instala llama.cpp Windows CUDA. Usa el nodo (Down)load LLM model by Arquinovatos en workflows nuevos. v" + VERSION
 
     @classmethod
     def INPUT_TYPES(cls):

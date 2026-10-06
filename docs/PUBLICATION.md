@@ -1,24 +1,34 @@
-# Distribution and Manager registration
+# Publicación y registro en Manager
 
-GitHub is the distribution target for this node pack. Hugging Face hosts the separately licensed GGUF model artifacts referenced by the Downloader.
+El repositorio público del pack es [danielpatillo/arquinovatos](https://github.com/danielpatillo/arquinovatos). Hugging Face conserva los GGUF de sus propietarios; el pack referencia sus revisiones y hashes y no redistribuye los pesos.
 
-The distribution repository is `https://github.com/danielpatillo/arquinovatos`.
+## Estado de v0.0.03
 
-## Current publication status
+**Distribución v0.0.03 (paquete Python 0.0.3).** GitHub aloja las fuentes, workflows, pruebas y licencias de esta entrega. Pasaron 14/14 casos funcionales API y los controles efectivos de las diez inferencias. La revisión del contenido aceptó 9/10 salidas y conserva el fallo restante: no se acredita fidelidad completa del LLM. Los resultados se explican en [VALIDATION.md](VALIDATION.md). Para fijar la entrega utiliza su commit en el historial del repositorio; los informes privados de publicación/descarga y hashes de esta máquina se conservan fuera del paquete.
 
-The repository is public and was verified empty before publishing this reviewed release. The pack can be cloned or downloaded through GitHub. The published functional source is commit [`1fea90f`](https://github.com/danielpatillo/arquinovatos/commit/1fea90f673644019990f1831c7a762d215c5c5cb), followed by publication-status documentation updates.
+El paquete público verificado anteriormente corresponde a **v0.0.02**. Su código funcional se publicó en [1fea90f](https://github.com/danielpatillo/arquinovatos/commit/1fea90f673644019990f1831c7a762d215c5c5cb), seguido de documentación en [d3ae5e4](https://github.com/danielpatillo/arquinovatos/commit/d3ae5e4c5fd8ffffd84d10fa590f3c86d66271cf). La descarga anónima de ese paquete coincidió con los 25 archivos revisados; los resultados históricos se explican en [VALIDATION.md](VALIDATION.md).
 
-An anonymous download of the commit ZIP matched all 25 reviewed source files, and 39 backend tests passed on the downloaded code. Public Manager search remains pending catalogue acceptance. The official registration proposal is [ComfyUI-Manager PR #3353](https://github.com/Comfy-Org/ComfyUI-Manager/pull/3353): open, not a draft, one catalogue entry and no changes to existing entries. GitHub's upstream workflow initially requires maintainer approval for this fork contribution. It is not a confirmed test failure or catalogue approval.
+## Búsqueda pública en Manager
 
-The source ZIP can already be installed manually by placing its `Arquinovatos_Prompt_Enhancer` folder inside `ComfyUI/custom_nodes` and restarting ComfyUI.
+La solicitud de incorporación es [ComfyUI-Manager PR #3353](https://github.com/Comfy-Org/ComfyUI-Manager/pull/3353). Sigue pendiente de aceptación del catálogo; un repositorio descargable o una PR abierta no acreditan que el pack aparezca en la búsqueda pública. La nueva iteración mantiene el mismo repositorio y la compatibilidad de los nodos anteriores.
 
-## Public Manager search
+El archivo `node_list.json` describe el nuevo `Arquinovatos_LLM_Model` y los nodos conservados. No hace falta abrir una solicitud duplicada para cambiar la versión del mismo pack.
 
-There are two documented registration paths:
+Las vías oficiales son:
 
-1. **Comfy Registry:** register a publisher, add its real `PublisherId` to `pyproject.toml`, create a publishing API key and use `comfy node publish`. The publishing package version is `0.0.2`; the user-facing version is `v0.0.02`. No key belongs in this repository. [Official publishing guide](https://docs.comfy.org/registry/publishing).
-2. **Manager catalogue proposal:** after the GitHub repository is public, submit an entry to `Comfy-Org/ComfyUI-Manager/custom-node-list.json`. Inclusion depends on maintainers merging the proposal and Manager updating its catalogue/cache. [Official Manager registration instructions](https://github.com/Comfy-Org/ComfyUI-Manager#how-to-register-your-custom-node-into-comfyui-manager).
+1. **Catálogo de Manager:** aceptación de la PR y actualización del catálogo/cache por los usuarios. [Instrucciones oficiales](https://github.com/Comfy-Org/ComfyUI-Manager#how-to-register-your-custom-node-into-comfyui-manager).
+2. **Comfy Registry:** crear o utilizar un editor real, fijar `PublisherId` y publicar mediante su clave. No se ha publicado una versión en Registry ni se incluye una clave en el paquete. [Guía oficial](https://docs.comfy.org/registry/publishing).
 
-The pack's three public class names are declared explicitly and described in `node_list.json`. That file is a name-to-description object matching Manager's scanner.
+La instalación manual por Git URL depende de las funciones habilitadas en Manager y puede utilizarse mientras se tramita la incorporación. Colocar el pack dentro de `ComfyUI/custom_nodes` y reiniciar también permite instalarlo.
 
-A downloadable repository, an open catalogue proposal, an approved Registry version and an actual Manager search result are separate states. This release is validated locally; no Registry version has been published and no public Manager search inclusion is claimed.
+## Separar los estados al informar
+
+| Estado | Evidencia necesaria |
+|---|---|
+| Preparado localmente | Código/documentación presentes |
+| Funcionalidad validada v0.0.03 | Informes nuevos de backend, interfaz y ejecución real; revisión semántica con fallos y límites visibles |
+| Publicado v0.0.03 | Commit público y descarga que coincida con sus fuentes |
+| Incorporado al catálogo | PR aceptada o versión Registry aprobada |
+| Encontrado en Manager | Búsqueda observable tras actualizar el catálogo |
+
+Los hashes y datos privados de esta máquina se conservan fuera del repositorio público. No añadir modelos, binarios, registros o configuración local al ZIP de código.

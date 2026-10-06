@@ -1,6 +1,7 @@
 {
   "Arquinovatos_Prompt_Enhancer": "Improve image/video prompts with a local GGUF LLM and optional output formats.",
-  "Arquinovatos_Model_Loader": "Select an existing text-chat GGUF or load its absolute path from the PC.",
-  "Arquinovatos_Model_Downloader": "Download pinned model artifacts and a missing CUDA engine with SHA256 verification."
+  "Arquinovatos_LLM_Model": "(Down)load LLM model by Arquinovatos: reuse an existing GGUF or automatically download a missing catalogue model and engine when executed.",
+  "Arquinovatos_Model_Loader": "Legacy compatibility: select an existing text-chat GGUF or load its absolute path from the PC.",
+  "Arquinovatos_Model_Downloader": "Legacy compatibility: download pinned model artifacts and a missing CUDA engine with SHA256 verification."
 }
 
