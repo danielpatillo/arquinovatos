@@ -90,4 +90,5 @@ Código propio: MIT. Modelos, motor y DLL mantienen sus licencias, descritas en 
 
 ## English quick start
 
-Use the v0.0.03 combined loader workflow, select Qwen3.5-4B, connect its model to the Enhancer, enter the original prompt and editing instructions, then click **Mejorar prompt**. Missing catalogue GGUF/CUDA runtime files are prepared on execution; an invalid manual path reports an error without falling back. Advanced generation controls default off. Local functionality passed 14/14 API cases; independent content review accepted 9/10 outputs. Review every output because the model can add incompatible restrictions. Publication of this iteration is pending.
+Use the v0.0.03 combined loader workflow, select Qwen3.5-4B, connect its model to the Enhancer, enter the original prompt and editing instructions, then click **Mejorar prompt**. Missing catalogue GGUF/CUDA runtime files are prepared on execution; an invalid manual path reports an error without falling back. Advanced generation controls default off. Local functionality passed 14/14 API cases; independent content review accepted 9/10 outputs. Review every output because the model can add incompatible restrictions.
+
