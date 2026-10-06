@@ -1,0 +1,77 @@
+{
+  "version": "0.0.02",
+  "models": {
+    "Qwen3.5-4B": {
+      "filename": "Qwen3.5-4B-Q4_K_M.gguf",
+      "download_url": "https://huggingface.co/lmstudio-community/Qwen3.5-4B-GGUF/resolve/f9f88ac3e234be915e23811a6d28ea287bdb927e/Qwen3.5-4B-Q4_K_M.gguf",
+      "size_bytes": 2707513696,
+      "sha256": "25082a7dd3776cc3c741c6347d3bd04523f05796607b3fbc32fa3a25dfa1418c",
+      "repository": "lmstudio-community/Qwen3.5-4B-GGUF",
+      "revision": "f9f88ac3e234be915e23811a6d28ea287bdb927e",
+      "license": "Apache-2.0",
+      "original_model_url": "https://huggingface.co/Qwen/Qwen3.5-4B"
+    },
+    "Qwen3.5-9B": {
+      "filename": "Qwen3.5-9B-Q4_K_M.gguf",
+      "download_url": "https://huggingface.co/lmstudio-community/Qwen3.5-9B-GGUF/resolve/1379f25c6b505a3fc737bd7818cb09389cf807c1/Qwen3.5-9B-Q4_K_M.gguf",
+      "size_bytes": 5627044256,
+      "sha256": "cd76ec205963b3b33350093e6904d9de16c4e666fd104e1f632d25c7f15f2a13",
+      "repository": "lmstudio-community/Qwen3.5-9B-GGUF",
+      "revision": "1379f25c6b505a3fc737bd7818cb09389cf807c1",
+      "license": "Apache-2.0",
+      "original_model_url": "https://huggingface.co/Qwen/Qwen3.5-9B"
+    },
+    "Gemma4-E4B": {
+      "filename": "gemma-4-E4B_q4_0-it.gguf",
+      "download_url": "https://huggingface.co/google/gemma-4-E4B-it-qat-q4_0-gguf/resolve/4b4a2c1d584be7264f87aac328a1bc739ce81b6c/gemma-4-E4B_q4_0-it.gguf",
+      "size_bytes": 5154941280,
+      "sha256": "676c35070db6dbe52f93e9c864ee0fba4eddea94b9c875d9cb10daff453fbaee",
+      "repository": "google/gemma-4-E4B-it-qat-q4_0-gguf",
+      "revision": "4b4a2c1d584be7264f87aac328a1bc739ce81b6c",
+      "license": "Apache-2.0",
+      "original_model_url": "https://huggingface.co/google/gemma-4-E4B-it"
+    }
+  },
+  "runtime": {
+    "repository": "https://github.com/ggml-org/llama.cpp",
+    "release": "b11433",
+    "release_url": "https://github.com/ggml-org/llama.cpp/releases/tag/b11433",
+    "published_at_utc": "2026-10-05T23:10:22Z",
+    "backend": "CUDA 13.4 x64 Windows",
+    "binary": {
+      "filename": "llama-b11433-bin-win-cuda-13.4-x64.zip",
+      "download_url": "https://github.com/ggml-org/llama.cpp/releases/download/b11433/llama-b11433-bin-win-cuda-13.4-x64.zip",
+      "size_bytes": 153089874,
+      "sha256": "5e58114a496f64f21cbfed8e8e6f647c2810bdc052e87f73bc665c3c6f467208"
+    },
+    "cuda_runtime": {
+      "filename": "cudart-llama-bin-win-cuda-13.4-x64.zip",
+      "download_url": "https://github.com/ggml-org/llama.cpp/releases/download/b11433/cudart-llama-bin-win-cuda-13.4-x64.zip",
+      "size_bytes": 423535356,
+      "sha256": "738f8c251ac22b70c3ae6f83a10cf222725df0395246a2cf58f32bdb85fbe668"
+    },
+    "recommended_context_tokens": 4096,
+    "recommended_parallel_slots": 1,
+    "recommended_max_output_tokens": 768,
+    "recommended_server_flags": [
+      "-c",
+      "4096",
+      "-ngl",
+      "all",
+      "-fa",
+      "on",
+      "--jinja",
+      "--reasoning",
+      "off",
+      "--reasoning-budget",
+      "0",
+      "--host",
+      "127.0.0.1"
+    ],
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "reasoning_effort": "none",
+    "documentation_url": "https://github.com/ggml-org/llama.cpp/blob/b11433/tools/server/README.md"
+  }
+}

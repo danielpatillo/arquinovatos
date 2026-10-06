@@ -1,0 +1,18 @@
+[project]
+name = "arquinovatos-prompt-enhancer"
+version = "0.0.2"
+description = "Local GGUF prompt enhancement, model loading and verified downloads for ComfyUI."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Arquinovatos" }]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/danielpatillo/arquinovatos"
+Issues = "https://github.com/danielpatillo/arquinovatos/issues"
+
+[tool.comfy]
+DisplayName = "Arquinovatos_Prompt_Enhancer"
+# PublisherId is added only after the author has registered that ID in Comfy Registry.
+

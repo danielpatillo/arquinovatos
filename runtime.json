@@ -1,0 +1,9 @@
+{
+  "version": "0.0.02",
+  "context_size": 4096,
+  "max_tokens": 768,
+  "temperature": 0.4,
+  "server_timeout": 180,
+  "request_timeout": 90,
+  "release_after_generation": true
+}

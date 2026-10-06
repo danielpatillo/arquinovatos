@@ -1,0 +1,28 @@
+{
+  "1": {
+    "class_type": "Arquinovatos_Model_Downloader",
+    "inputs": {
+      "modelo": "Qwen3.5-4B",
+      "instalar_motor": true
+    }
+  },
+  "2": {
+    "class_type": "Arquinovatos_Prompt_Enhancer",
+    "inputs": {
+      "prompt_positivo": "Una casa blanca con techo rojo junto a un lago azul y exactamente tres pinos. Sin personas, texto ni logotipos.",
+      "instrucciones": "Mejora este prompt para generar una imagen: conserva el sujeto y la escena, las cantidades exactas y la relación entre cada sujeto y sus colores o atributos. Incluye por escrito todas las exclusiones originales (por ejemplo: sin personas, sin texto, sin logotipos), sin omitirlas ni añadir exclusiones nuevas. Describe composición, iluminación, materiales y estilo con precisión. Evita contradicciones y elementos nuevos que cambien la intención. Devuelve solo el prompt mejorado, en el mismo idioma, en un párrafo de 80 a 140 palabras.",
+      "modelo": "Qwen3.5-4B",
+      "formato_prompt": "",
+      "estilo": "",
+      "lente_mm": "",
+      "hora_dia": "",
+      "composicion": "",
+      "iluminacion": "",
+      "paleta_color": "",
+      "modelo_input": [
+        "1",
+        0
+      ]
+    }
+  }
+}

@@ -1,0 +1,11 @@
+tests/
+.github/
+runtime.local.json
+__pycache__/
+*.pyc
+*.gguf
+*.zip
+*.log
+runtime/
+models/
+bin/
